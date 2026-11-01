@@ -47,7 +47,8 @@ module LSCStairsNativeTest
       plan=@plugin::Core.solve('shape'=>'straight','mode'=>'endpoints','lower'=>{'point'=>[1000,2000,-3000]},'upper'=>{'point'=>[7900,2000,0]})
       instance=@plugin::Geometry.create(@model,plan)
       assert((instance.transformation.origin.z*25.4+3000).abs<0.01,'Wrong origin')
-      assert((instance.bounds.max.z*25.4-900).abs<0.1,'Wrong upper elevation')
+      # Horizontal round rails extend one radius above their centerline.
+      assert((instance.bounds.max.z*25.4-920).abs<0.1,'Wrong upper elevation')
     end
     check('update preserves instance, transform, tag, material and copied sibling') do
       @model.entities.clear!
