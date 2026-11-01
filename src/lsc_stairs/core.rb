@@ -164,7 +164,9 @@ module LSC
         unless r['rails'] == 'none'
           platforms.each { |p| platform_rails(rails,p,flights,r,a) }
         end
-        count = flights.sum { |f| f[:n] }
+        # Some installed SketchUp extensions replace Array#sum with a legacy
+        # implementation that ignores blocks. Keep our arithmetic independent.
+        count = flights.inject(0) { |total,f| total+f[:n] }
         treads = flights.map { |f| f[:t] }
         comfort = treads.map { |t| 2*layout[:riser]+t }
         warnings = []
@@ -226,7 +228,7 @@ module LSC
       def endpoint_layout(r)
         a=r['lower']['point']; b=r['upper']['point']; d,s=directions(r)
         delta=[b[0]-a[0],b[1]-a[1]]
-        along=delta.zip(d).sum { |x,y| x*y }; lateral=delta.zip(s).sum { |x,y| x*y }
+        along=delta[0]*d[0]+delta[1]*d[1]; lateral=delta[0]*s[0]+delta[1]*s[1]
         candidates=[]; two=r['shape']!='straight'
         ((r['rise']/200).ceil..(r['rise']/100).floor).each do |n|
           next if two && n<4
@@ -261,7 +263,7 @@ module LSC
           end
         end
         chosen=candidates.min_by do |c|
-          (c[:riser]-r['riser']).abs*10+c[:flights].sum { |f| (f[:t]-r['tread']).abs }+
+          (c[:riser]-r['riser']).abs*10+c[:flights].inject(0.0) { |total,f| total+(f[:t]-r['tread']).abs }+
             (c[:flights].length>1 ? (c[:flights][0][:n]-c[:flights][1][:n]).abs*0.01 : 0)
         end
         raise ArgumentError, '落点无法容纳此梯型。请调整方向、转向、平台或重选落点；U 型横向间距至少为梯宽加梯井。' unless chosen

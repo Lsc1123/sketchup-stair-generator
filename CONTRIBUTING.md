@@ -7,6 +7,7 @@
 原生测试 `tests/native.rb` **只允许在独立 SketchUp 进程和明确命名的空白测试文件上执行**。运行前检查无人操作该测试进程；不得拿当前用户模型作为测试对象，不得通过删除用户 Plugins 文件来隔离环境。测试入口要求显式传入 fixture、package 和 output 绝对路径，且初始模型必须与 fixture 一致、顶层实体为零。
 
 ```ruby
+require '/absolute/path/to/extracted-rbz/lsc_stairs/main.rb'
 load '/absolute/path/to/tests/native.rb'
 LSCStairsNativeTest.run(
   fixture: '/absolute/path/to/empty-fixture.skp',
@@ -14,6 +15,8 @@ LSCStairsNativeTest.run(
   output: '/absolute/path/to/test-results/native'
 )
 ```
+
+直接加载解包入口用于原生 API 测试，不代表扩展管理器安装、签名或加载策略验收通过。
 
 原生测试会创建、清理和保存自己的合成模型。报告必须区分纯 Ruby、模拟接口与真正的 SketchUp 原生结果；不得用语法检查代替交互验收。
 

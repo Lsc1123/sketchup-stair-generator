@@ -14,6 +14,23 @@ module LSCStairsNativeTest
   rescue StandardError=>e
     @results << {name:name,pass:false,error:"#{e.class}: #{e.message}",trace:e.backtrace.first(4)}
   end
+  def assert_outward_solids(solids)
+    solids.each do |solid|
+      assert(solid.manifold?,'Open solid')
+      solid.entities.grep(Sketchup::Edge).each do |edge|
+        faces=edge.faces
+        assert(faces.length==2 && edge.reversed_in?(faces[0])!=edge.reversed_in?(faces[1]),'Inconsistent face orientation')
+      end
+      # Divergence theorem uses actual face normals/areas, including concave
+      # caps. Manifold? and Group#volume alone do not detect a reversed cap.
+      volume=solid.entities.grep(Sketchup::Face).inject(0.0) do |total,face|
+        p=face.vertices.first.position; n=face.normal
+        total+(p.x*n.x+p.y*n.y+p.z*n.z)*face.area/3.0
+      end
+      assert(volume>1e-7,'Inward or zero-volume solid')
+      assert((volume-solid.volume).abs<[1e-6,solid.volume*1e-7].max,'Signed volume disagrees with solid volume')
+    end
+  end
   def write(complete=false)
     File.write(File.join(@output,'native.json'),JSON.pretty_generate({complete:complete,
       pass:complete && @results.all? { |r| r[:pass] },pid:Process.pid,sketchup:Sketchup.version,ruby:RUBY_DESCRIPTION,
@@ -22,7 +39,7 @@ module LSCStairsNativeTest
   def run(fixture:,package:,output:)
     @output=output; FileUtils.mkdir_p(output); @results=[]
     @model=Sketchup.active_model
-    assert(@model && @model.path==fixture && @model.entities.length.zero? && @model.active_path.nil?,'Not the dedicated empty fixture')
+    assert(@model && !@model.path.empty? && File.identical?(@model.path,fixture) && @model.entities.length.zero? && @model.active_path.nil?,'Not the dedicated empty fixture')
     $LOAD_PATH.unshift(package)
     require File.join(package,'lsc_stairs.rb')
     @plugin=LSC::Stairs
@@ -38,19 +55,30 @@ module LSCStairsNativeTest
         instance=@plugin::Geometry.create(@model,plan)
         solids=instance.definition.entities.grep(Sketchup::Group).flat_map { |g| g.entities.grep(Sketchup::Group) }
         assert(solids.length==plan['boxes'].length+plan['rails'].length,'Wrong solid count')
-        assert(solids.all?(&:manifold?),'Open solid')
+        assert_outward_solids(solids)
         assert(instance.get_attribute(@plugin::DICT,'schema')==1,'Missing metadata')
       end
     end
-    @plugin::Core.styles.each do |style|
-      check("#{style['id']}: style solids are closed without material assignment") do
+    @plugin::Core.styles.product(%w[straight I L U],[true,false],[0,37]).each do |style,shape,left,heading|
+      check("#{style['id']}/#{shape}/#{left}/#{heading}: outward solids without material assignment") do
         @model.entities.clear!
-        plan=@plugin::Core.solve('style'=>style['id'],'shape'=>'L')
+        plan=@plugin::Core.solve('style'=>style['id'],'shape'=>shape,'left'=>left,'heading'=>heading)
         instance=@plugin::Geometry.create(@model,plan)
         solids=instance.definition.entities.grep(Sketchup::Group).flat_map { |g| g.entities.grep(Sketchup::Group) }
         assert(solids.length==plan['boxes'].length+plan['rails'].length+plan['meshes'].length,'Wrong style solid count')
-        assert(solids.all?(&:manifold?),'Open style solid')
+        assert_outward_solids(solids)
         assert(solids.all? { |g| g.material.nil? && g.entities.grep(Sketchup::Face).all? { |f| f.material.nil? && f.back_material.nil? } },'Style assigned materials')
+      end
+    end
+    check('counts and endpoints coexist with installed Array#sum overrides') do
+      %w[straight I L U].product([true,false],[0,37,-90]).each do |shape,left,heading|
+        plan=@plugin::Core.solve('shape'=>shape,'left'=>left,'heading'=>heading,'rise'=>3150)
+        assert(plan['stats']['count']==21,'Wrong dimension count')
+        lower=[-2500,5000,-3000]
+        upper=plan['endpoint'].zip(lower).map { |x,y| x+y }
+        fitted=@plugin::Core.solve(plan['params'].merge('mode'=>'endpoints','lower'=>{'point'=>lower},'upper'=>{'point'=>upper}))
+        assert(fitted['stats']['count']==21,'Wrong endpoint count')
+        assert(fitted['endpoint'].zip(plan['endpoint']).all? { |x,y| (x-y).abs<0.01 },'Wrong endpoint fit')
       end
     end
     check('negative elevation endpoint placement') do
@@ -58,8 +86,11 @@ module LSCStairsNativeTest
       plan=@plugin::Core.solve('shape'=>'straight','mode'=>'endpoints','lower'=>{'point'=>[1000,2000,-3000]},'upper'=>{'point'=>[7900,2000,0]})
       instance=@plugin::Geometry.create(@model,plan)
       assert((instance.transformation.origin.z*25.4+3000).abs<0.01,'Wrong origin')
-      # Horizontal round rails extend one radius above their centerline.
-      assert((instance.bounds.max.z*25.4-920).abs<0.1,'Wrong upper elevation')
+      # A sloped rail's circular section projects less than one full radius
+      # onto Z; its centerline/post top is 900mm above the upper endpoint.
+      top=instance.bounds.max.z*25.4
+      assert(top.between?(899.9,920.1),'Wrong upper elevation')
+      assert((plan['origin'][2]+plan['endpoint'][2]).abs<0.01,'Wrong upper endpoint')
     end
     check('update preserves instance, transform, tag, material and copied sibling') do
       @model.entities.clear!
@@ -141,7 +172,7 @@ module LSCStairsNativeTest
   def after_reopen
     @model=Sketchup.active_model
     check('save/reopen keeps editable parameters') do
-      assert(@model.path==@roundtrip,'Wrong reopened model')
+      assert(File.identical?(@model.path,@roundtrip),'Wrong reopened model')
       instances=@model.entities.grep(Sketchup::ComponentInstance).select { |i| @plugin::Geometry.owned?(i) }
       assert(instances.length==2,'Instances missing')
       assert(instances.all? { |i| JSON.parse(i.get_attribute(@plugin::DICT,'params'))['shape']=='U' },'Parameters lost')

@@ -2,15 +2,15 @@
 
 独立、离线、可编辑的 SketchUp 参数楼梯插件。从 [空间推敲台](https://github.com/Lsc1123/sketchup-spatial-workbench) 的楼梯功能拆分，使用 MIT 许可开源。
 
-**版本：0.2.0-beta.1。** 支持直跑、双跑直梯、L 型、U 型，六种几何样式，平台、扶手和立柱。界面参考苹果桌面应用的分组、控件和主次层级；所有几何在本机 Ruby 中计算，无在线依赖。
+**正式版本：0.2.0。** 支持直跑、双跑直梯、L 型、U 型，六种几何样式，平台、扶手和立柱。界面参考苹果桌面应用的分组、控件和主次层级；所有几何在本机 Ruby 中计算，无在线依赖。
 
 ![参数面板与楼梯预览](docs/interface.png)
 
 ## 安装
 
-从 [Releases](https://github.com/Lsc1123/sketchup-stair-generator/releases) 下载 `lsc-stairs-0.2.0-beta.1.rbz`，在 SketchUp 的“扩展程序管理器 → 安装扩展程序”中选择。菜单“扩展 → LSC 楼梯生成器”或工具栏可打开面板。
+下载 [lsc-stairs-0.2.0.rbz](https://github.com/Lsc1123/sketchup-stair-generator/releases/download/v0.2.0/lsc-stairs-0.2.0.rbz)，在 SketchUp 的“扩展程序管理器 → 安装扩展程序”中选择 RBZ，安装后重启 SketchUp。菜单“扩展 → LSC 楼梯生成器”或工具栏可打开面板。也可运行 `python tools/package.py` 从源码构建。
 
-以 SketchUp 2021+ 为开发目标。当前自动测试覆盖纯 Ruby 几何与打包；macOS SU 2026 原生交互验收待完成，Windows 尚未验证。具体状态见 [验证记录](docs/validation.md)。测试版尚未经过 Extension Warehouse 签名，不会自动修改扩展加载策略。
+以 SketchUp 2021+ 为开发目标。自动测试覆盖纯 Ruby 几何与打包，Windows SketchUp 2025 原生 API 及关键面板回调已验证；macOS 原生交互验收待完成。具体范围见 [验证记录](docs/validation.md)。本发布尚未经过 Extension Warehouse 签名，不会自动修改扩展加载策略。
 
 ## 使用
 
@@ -21,6 +21,8 @@
 5. 选中本插件的顶层楼梯组件，点击“读取所选楼梯”或右键“编辑楼梯参数…”，修改后点击“更新所选楼梯”。
 
 参数更新保留所选组件的位置、旋转、缩放、名称、标签和实例材质，并先独立化以保护复制件。更新会重建内部几何，覆盖内部手工修改；可通过 SketchUp 撤销恢复。无需参数更新时，可直接用原生工具编辑构件。
+
+从测试版升级后，已有参数楼梯可通过“读取所选楼梯 → 更新所选楼梯”重建，修正实心／斜板梯段的反面。
 
 踏步按 **n 个踢面、n−1 个踏面** 计算，首末梯段直接接入原有楼板，**不额外生成起点／终点平台板及其栏杆**。双跑只在中间增加平台；U 型梯井宽度为两梯段之间的净距。“平台长度”只控制中间平台，直跑不显示此参数。点选模式的实际踏面可能与目标值不同，面板显示每段实际结果。点选位置是固定坐标快照，不随建筑面移动。
 
@@ -47,6 +49,7 @@
 ruby tests/core_test.rb
 ruby tests/styles_test.rb
 ruby tests/controller_test.rb
+ruby tests/compatibility_test.rb
 ruby tools/check_syntax.rb
 node --check src/lsc_stairs/ui/app.js
 python3 tests/package_test.py

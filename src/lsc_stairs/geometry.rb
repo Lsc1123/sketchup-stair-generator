@@ -8,6 +8,19 @@ module LSC
         Geom::Point3d.new(p.map { |v| v/25.4 })
       end
 
+      def polygon_normal(ring)
+        # Newell's method uses the complete boundary. The first three vertices
+        # of a concave stair profile can turn opposite to the polygon winding.
+        normal=[0.0,0.0,0.0]
+        ring.each_with_index do |a,i|
+          b=ring[(i+1)%ring.length]
+          normal[0]+=(a.y-b.y)*(a.z+b.z)
+          normal[1]+=(a.z-b.z)*(a.x+b.x)
+          normal[2]+=(a.x-b.x)*(a.y+b.y)
+        end
+        Geom::Vector3d.new(normal)
+      end
+
       def fill(entities,plan)
         buckets={}
         plan['boxes'].each do |box|
@@ -23,13 +36,15 @@ module LSC
           bucket=buckets[mesh['detail']] ||= entities.add_group.tap { |g| g.name=mesh['detail'] }
           solid=bucket.entities.add_group; solid.name=mesh['detail']
           points=mesh['vertices'].map { |p| point(p) }
-          mesh['faces'].each do |indices|
+          oriented_faces=mesh['faces'].map do |indices|
             ring=indices.map { |i| points.fetch(i) }
             face=solid.entities.add_face(ring)
             raise '楼梯样式构件生成失败。' unless face
-            normal=(ring[1]-ring[0]).cross(ring[2]-ring[0])
-            face.reverse! if face.normal.dot(normal)<0
+            [face,polygon_normal(ring)]
           end
+          # Orient after all faces exist so add_face's adjacency inference
+          # cannot change a face that we already checked.
+          oriented_faces.each { |face,normal| face.reverse! if face.normal.dot(normal)<0 }
           raise '楼梯样式构件未闭合。' unless solid.manifold?
         end
         plan['rails'].each do |rail|

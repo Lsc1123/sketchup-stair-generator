@@ -23,6 +23,7 @@ jobs:
       - run: ruby tests/core_test.rb
       - run: ruby tests/styles_test.rb
       - run: ruby tests/controller_test.rb
+      - run: ruby tests/compatibility_test.rb
       - run: ruby tools/check_syntax.rb
       - run: node --check src/lsc_stairs/ui/app.js
       - run: python tests/package_test.py
