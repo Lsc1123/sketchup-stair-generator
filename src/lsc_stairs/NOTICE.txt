@@ -1,0 +1,10 @@
+LSC Stairs / LSC 楼梯生成器
+Copyright (c) 2026 LSC. MIT License; see LICENSE.txt.
+
+The endpoint layout solver is adapted from LSC Spatial Workbench:
+https://github.com/Lsc1123/sketchup-spatial-workbench
+Commit: 6792e3e1a4a474df87d28f28a8e47ade21c99d57
+Original file: core/independent-stairs.js (MIT).
+
+No Clipper, JSBN, online scripts, SF Symbols, Apple logos or third-party fonts
+are included. Apple Human Interface Guidelines were consulted for UI layout.

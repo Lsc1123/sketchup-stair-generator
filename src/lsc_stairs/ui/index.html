@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'">
+  <title>LSC 楼梯生成器</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="toolbar">
+    <div class="identity"><img src="../icons/stairs.png" width="34" height="34" alt=""><div><h1>楼梯生成器</h1><p>LSC STAIRS <span id="version"></span></p></div></div>
+    <div class="toolbar-actions"><button id="read" title="读取所选楼梯的参数">读取所选楼梯</button><button id="apply" class="primary" disabled>放置楼梯</button></div>
+  </header>
+  <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+  <div class="workspace">
+    <aside class="inspector" aria-label="楼梯参数">
+      <div class="inspector-title"><h2>设计楼梯</h2><button id="reset" class="text-button">新建</button></div>
+      <div id="target" class="target" hidden></div>
+      <form id="form" novalidate>
+        <fieldset class="shape-section"><legend>梯型</legend>
+          <div class="shape-picker" role="group" aria-label="选择梯型">
+            <button type="button" data-shape="straight" aria-pressed="false"><svg viewBox="0 0 40 36" aria-hidden="true"><path d="M13 31V5h14v26M13 10h14m-14 5h14m-14 5h14m-14 5h14"/></svg><span>直跑</span></button>
+            <button type="button" data-shape="I" aria-pressed="false"><svg viewBox="0 0 40 36" aria-hidden="true"><path d="M13 31V5h14v26M13 9h14m-14 4h14m-14 10h14m-14 4h14M13 16h14v4H13"/></svg><span>双跑直梯</span></button>
+            <button type="button" data-shape="L" aria-pressed="false"><svg viewBox="0 0 40 36" aria-hidden="true"><path d="M7 31V5h26v13H20v13H7m0-8h13M7 18h13M7 13h13m5-8v13m5-13v13"/></svg><span>L 型</span></button>
+            <button type="button" data-shape="U" aria-pressed="true"><svg viewBox="0 0 40 36" aria-hidden="true"><path d="M5 31V5h30v26H23V17h-6v14H5m0-8h12m-12-5h12m6 5h12m-12-5h12M5 13h30"/></svg><span>U 型</span></button>
+          </div>
+        </fieldset>
+        <fieldset><legend>生成方式</legend>
+          <div class="segmented mode-picker"><button type="button" data-mode="dimensions" aria-pressed="true">按层高生成</button><button type="button" data-mode="endpoints" aria-pressed="false">点选上下落点</button></div>
+          <div id="endpoint-controls" hidden><button type="button" id="pick" class="wide">点选下方和上方落点…</button><p id="endpoint-info" class="caption">依次捕捉两个落点，使用实际标高。</p></div>
+        </fieldset>
+        <fieldset><legend>基本尺寸 <span>毫米</span></legend><div class="group">
+          <label class="setting" id="rise-row"><span>层高</span><span class="value"><input name="rise" aria-label="层高" type="number" value="3000" min="150" max="30000" step="any" required><span>mm</span></span></label>
+          <label class="setting"><span>梯段净宽</span><span class="value"><input name="width" aria-label="梯段净宽" type="number" value="1000" min="400" max="5000" step="any" required><span>mm</span></span></label>
+          <label class="setting"><span>目标踢面高</span><span class="value"><input name="riser" aria-label="目标踢面高" type="number" value="150" min="100" max="200" step="any" required><span>mm</span></span></label>
+          <label class="setting"><span>目标踏面深</span><span class="value"><input name="tread" aria-label="目标踏面深" type="number" value="300" min="220" max="450" step="any" required><span>mm</span></span></label>
+        </div><p class="caption">踢面均分层高；点选模式自动匹配实际踏面。</p></fieldset>
+        <fieldset><legend>平台与方向</legend><div class="group">
+          <label class="setting"><span>平台长度</span><span class="value"><input name="landing" aria-label="平台长度" type="number" value="1200" min="400" max="10000" step="any" required><span>mm</span></span></label>
+          <label class="setting" id="gap-row"><span>梯井宽度</span><span class="value"><input name="gap" aria-label="梯井宽度" type="number" value="200" min="0" max="10000" step="any" required><span>mm</span></span></label>
+          <label class="setting"><span>起跑方向</span><span class="value"><input name="heading" aria-label="起跑方向" type="number" value="0" min="-36000" max="36000" step="any" required><span>°</span></span></label>
+          <label class="setting" id="turn-row"><span>转向</span><select name="left" aria-label="转向"><option value="true">向左</option><option value="false">向右</option></select></label>
+          <label class="setting"><span>踏步与平台厚</span><span class="value"><input name="thickness" aria-label="踏步与平台厚" type="number" value="180" min="30" max="500" step="any" required><span>mm</span></span></label>
+        </div></fieldset>
+        <fieldset><legend>扶手与栏杆</legend><div class="group">
+          <label class="setting"><span>梯段扶手</span><select name="rails" aria-label="梯段扶手"><option value="both">两侧</option><option value="left">仅左侧</option><option value="right">仅右侧</option><option value="none">关闭</option></select></label>
+          <div id="rail-fields">
+            <label class="setting"><span>扶手高度</span><span class="value"><input name="rail_height" aria-label="扶手高度" type="number" value="900" min="600" max="1500" step="any" required><span>mm</span></span></label>
+            <label class="setting"><span>扶手半径</span><span class="value"><input name="rail_radius" aria-label="扶手半径" type="number" value="20" min="10" max="60" step="any" required><span>mm</span></span></label>
+            <label class="setting"><span>立柱最大间距</span><span class="value"><input name="post_spacing" aria-label="立柱最大间距" type="number" value="900" min="200" max="1500" step="any" required><span>mm</span></span></label>
+          </div>
+        </div><p class="caption">平台外缘自动设栏杆，梯段连接处保持通行。</p></fieldset>
+      </form>
+      <p id="update-note" class="caption" hidden>更新会重建组件内部，覆盖内部手工修改。位置、旋转、缩放和标签保留；可撤销。</p>
+    </aside>
+    <main class="stage">
+      <div class="stage-heading"><div><h2>空间预览</h2><p id="preview-status">连接 SketchUp…</p></div><div class="segmented view-picker" aria-label="预览视图"><button data-view="iso" aria-pressed="true">轴测</button><button data-view="plan" aria-pressed="false">平面</button><button data-view="side" aria-pressed="false">侧面</button></div></div>
+      <div class="viewport"><svg id="preview" viewBox="0 0 640 460" role="img" aria-label="楼梯几何预览，可拖动旋转"><g id="scene"></g></svg><div class="viewport-label"><span id="shape-label">U 型楼梯</span><span id="drag-hint">拖动旋转</span></div></div>
+      <div class="results" aria-label="计算结果"><div><span>踢面数量</span><strong id="stat-count">—</strong></div><div><span>实际踢面高</span><strong id="stat-riser">—</strong></div><div><span>实际踏面深</span><strong id="stat-tread">—</strong></div></div>
+      <div class="details-row"><span id="flight-stats">等待计算</span><span id="comfort">2h + b —</span></div>
+      <div id="warnings" class="warnings" hidden></div>
+      <div class="stage-footer"><label class="switch-label"><input id="model-preview" type="checkbox" role="switch"><span class="switch"></span>在模型中预览</label><span class="caption">参数改变后自动更新</span></div>
+      <p class="scope-note">用于方案几何推敲。平台与扶手为可编辑构件；净空、栏杆防护与施工节点需另行设计。</p>
+    </main>
+  </div>
+  <script src="demo.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+name: Test and package
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  check:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: gem install minitest --version 5.25.5 --no-document
+      - run: ruby tests/core_test.rb
+      - run: ruby tests/controller_test.rb
+      - run: ruby tools/check_syntax.rb
+      - run: node --check src/lsc_stairs/ui/app.js
+      - run: python tests/package_test.py
+      - run: python tools/package.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lsc-stairs-${{ matrix.os }}
+          path: dist/

@@ -1,0 +1,8 @@
+.DS_Store
+.dev/
+dist/
+test-results/
+__pycache__/
+*.pyc
+*.skb
+*.log
