@@ -7,7 +7,7 @@ module LSC
   module Stairs
     unless file_loaded?(__FILE__)
       extension = SketchupExtension.new('LSC 楼梯生成器', File.join(__dir__,'lsc_stairs','main'))
-      extension.description = '独立参数楼梯：直跑、双跑直梯、L、U 型，平台、扶手、实时预览和参数更新。'
+      extension.description = '独立参数楼梯：四种梯型、六种几何样式、平台扶手、实时预览和参数更新。'
       extension.version = VERSION
       extension.creator = 'LSC'
       extension.copyright = 'Copyright 2026 LSC · MIT'

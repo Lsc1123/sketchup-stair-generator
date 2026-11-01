@@ -19,6 +19,19 @@ module LSC
           face.pushpull((box['top']-box['bottom'])/25.4)
           raise '踏步实体未闭合。' unless solid.manifold?
         end
+        plan.fetch('meshes',[]).each do |mesh|
+          bucket=buckets[mesh['detail']] ||= entities.add_group.tap { |g| g.name=mesh['detail'] }
+          solid=bucket.entities.add_group; solid.name=mesh['detail']
+          points=mesh['vertices'].map { |p| point(p) }
+          mesh['faces'].each do |indices|
+            ring=indices.map { |i| points.fetch(i) }
+            face=solid.entities.add_face(ring)
+            raise '楼梯样式构件生成失败。' unless face
+            normal=(ring[1]-ring[0]).cross(ring[2]-ring[0])
+            face.reverse! if face.normal.dot(normal)<0
+          end
+          raise '楼梯样式构件未闭合。' unless solid.manifold?
+        end
         plan['rails'].each do |rail|
           bucket=buckets['扶手与立柱'] ||= entities.add_group.tap { |g| g.name='扶手与立柱' }
           solid=bucket.entities.add_group; solid.name=rail['detail']

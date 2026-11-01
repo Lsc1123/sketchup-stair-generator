@@ -3,7 +3,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const form = $('form');
-  const state = {connected:false, params:{}, target:null, revision:0, plan:null, busy:false, view:'iso', yaw:-.65, pitch:.48, timer:null};
+  const state = {connected:false, params:{}, styles:[], target:null, revision:0, plan:null, busy:false, view:'iso', yaw:-.65, pitch:.48, timer:null};
   const names = {straight:'直跑楼梯', I:'双跑直梯', L:'L 型楼梯', U:'U 型楼梯'};
   const fmt = n => Number.isFinite(n) ? String(Math.round(n * 10) / 10) : '—';
   function call(action, payload) {
@@ -25,20 +25,56 @@
     syncControls();
   }
   function structuredCloneSafe(value) { return JSON.parse(JSON.stringify(value)); }
+  const diagrams = {
+    standard:'M5 29h8v-6h8v-6h8v-6h8 M5 33h12v-6h8v-6h8v-6h4',
+    solid:'M5 29h8v-6h8v-6h8v-6h8v24H5Z',
+    waist:'M5 29h8v-6h8v-6h8v-6h8v6L5 35Z',
+    open:'M5 29h10v3H5Zm8-7h10v3H13Zm8-7h10v3H21Zm8-7h10v3H29Z',
+    twin:'M5 29h10m-2-7h10m-2-7h10m-2-7h10 M5 35l31-23m-27 25 31-23',
+    spine:'M5 29h10m-2-7h10m-2-7h10m-2-7h10 M9 34l26-19 3 4-26 19Z'
+  };
+  function renderStyles(styles) {
+    state.styles=styles;
+    $('style-picker').replaceChildren();
+    for (const style of styles) {
+      const button=document.createElement('button');
+      button.type='button'; button.dataset.style=style.id; button.title=style.description;
+      button.innerHTML=`<svg viewBox="0 0 44 42" aria-hidden="true"><path d="${diagrams[style.id] || diagrams.standard}"/></svg>`;
+      const label=document.createElement('span'); label.textContent=style.name; button.append(label);
+      button.addEventListener('click',() => {
+        if (!state.connected) {
+          const example=window.LSC_STAIRS_DEMO?.style_examples?.[style.id];
+          if (example) {setParams(example.params);showPlan(example);}
+          return;
+        }
+        try { state.params=readForm(); } catch (_) {}
+        setParams({...state.params,...style.params,style:style.id}); invalidate();
+      });
+      $('style-picker').append(button);
+    }
+  }
   function syncControls() {
     document.querySelectorAll('[data-shape]').forEach(b => b.setAttribute('aria-pressed',String(b.dataset.shape===state.params.shape)));
     document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed',String(b.dataset.mode===state.params.mode)));
     $('gap-row').hidden=state.params.shape!=='U';
+    $('landing-row').hidden=state.params.shape==='straight';
     $('turn-row').hidden=!['L','U'].includes(state.params.shape);
     $('rail-fields').hidden=state.params.rails==='none';
+    $('beam-fields').hidden=!['twin','spine'].includes(state.params.style);
+    document.querySelectorAll('[data-style]').forEach(b => b.setAttribute('aria-pressed',String(b.dataset.style===state.params.style)));
+    const preset=state.styles.find(s=>s.id===state.params.style);
+    if (preset) {
+      const modified=Object.entries(preset.params).some(([key,value])=>state.params[key]!==value);
+      $('style-description').textContent=preset.description+(modified ? ' 已自定义尺寸。' : '');
+    }
     $('endpoint-controls').hidden=state.params.mode!=='endpoints';
-    form.elements.rise.disabled=state.params.mode==='endpoints';
+    form.elements.rise.disabled=!state.connected || state.params.mode==='endpoints';
     $('update-note').hidden=!state.target;
     $('target').hidden=!state.target;
     $('target').textContent=state.target ? `正在编辑 · ${state.target}` : '';
     $('apply').textContent=state.target ? '更新所选楼梯' : state.params.mode==='endpoints' ? '生成楼梯' : '放置楼梯';
     $('apply').disabled=!state.connected || !state.plan || state.busy;
-    $('pick').disabled=!!state.target;
+    $('pick').disabled=!state.connected || !!state.target;
     if (state.params.lower && state.params.upper) {
       $('endpoint-info').textContent=`下方 ${fmt(state.params.lower.point[2])} → 上方 ${fmt(state.params.upper.point[2])} mm`;
     } else $('endpoint-info').textContent='依次捕捉两个落点，使用实际标高。';
@@ -84,7 +120,8 @@
     }
     $('flight-stats').textContent=`${plan.stats.flights.length} 个梯段 · ${plan.stats.flights.join(' + ')} 个踢面`;
     $('comfort').textContent=`2h + b = ${plan.stats.comfort.map(fmt).join(' / ')} mm`;
-    $('shape-label').textContent=names[plan.params.shape];
+    const style=state.styles.find(s=>s.id===plan.params.style);
+    $('shape-label').textContent=names[plan.params.shape]+(style ? ` · ${style.name}` : '');
     $('warnings').replaceChildren();
     plan.warnings.forEach(text => { const p=document.createElement('p'); p.textContent=text; $('warnings').append(p); });
     $('warnings').hidden=!plan.warnings.length;
@@ -94,7 +131,7 @@
   }
   window.LSCStairs = {receive(event,data) {
     if (event==='ready') {
-      state.connected=true; $('version').textContent=data.version; setParams(data.params); invalidate();
+      state.connected=true; $('version').textContent=data.version; renderStyles(data.styles || []); setParams(data.params); invalidate();
     } else if (event==='plan') {
       if (data.revision!==state.revision) return;
       message(''); showPlan(data);
@@ -170,6 +207,13 @@
         faces.push({points,depth:points.reduce((n,p)=>n+p[2],0)/4,fill:['#d5d9df','#e1e5eb','#cbd1d9','#d3d9e1','#e8ecf1','#ffffff'][i]});
       });
     }
+    for (const mesh of plan.meshes || []) {
+      const vertices=mesh.vertices.map(project); raw.push(...vertices);
+      mesh.faces.forEach((indices,i) => {
+        const points=indices.map(k=>vertices[k]);
+        faces.push({points,depth:points.reduce((n,p)=>n+p[2],0)/points.length,fill:i<2 ? '#e1e5eb' : '#f8fafc'});
+      });
+    }
     const rails=plan.rails.map(r => { const points=[project(r.a),project(r.b)]; raw.push(...points); return {points,depth:(points[0][2]+points[1][2])/2,rail:true}; });
     const xs=raw.map(p=>p[0]),ys=raw.map(p=>p[1]);
     if (!raw.length) return;
@@ -199,7 +243,7 @@
   } else {
     document.body.classList.add('demo');
     const demo=window.LSC_STAIRS_DEMO;
-    if (demo) {setParams(demo.params);showPlan(demo);}
-    [...form.elements,$('read'),$('pick'),$('reset'),$('model-preview')].forEach(el => {el.disabled=true;});
+    if (demo) {renderStyles(demo.styles || []);setParams(demo.params);showPlan(demo);}
+    [...form.querySelectorAll('input,select,button'),$('read'),$('pick'),$('reset'),$('model-preview')].forEach(el => {if (!el.dataset.style) el.disabled=true;});
   }
 })();

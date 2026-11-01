@@ -42,6 +42,17 @@ module LSCStairsNativeTest
         assert(instance.get_attribute(@plugin::DICT,'schema')==1,'Missing metadata')
       end
     end
+    @plugin::Core.styles.each do |style|
+      check("#{style['id']}: style solids are closed without material assignment") do
+        @model.entities.clear!
+        plan=@plugin::Core.solve('style'=>style['id'],'shape'=>'L')
+        instance=@plugin::Geometry.create(@model,plan)
+        solids=instance.definition.entities.grep(Sketchup::Group).flat_map { |g| g.entities.grep(Sketchup::Group) }
+        assert(solids.length==plan['boxes'].length+plan['rails'].length+plan['meshes'].length,'Wrong style solid count')
+        assert(solids.all?(&:manifold?),'Open style solid')
+        assert(solids.all? { |g| g.material.nil? && g.entities.grep(Sketchup::Face).all? { |f| f.material.nil? && f.back_material.nil? } },'Style assigned materials')
+      end
+    end
     check('negative elevation endpoint placement') do
       @model.entities.clear!
       plan=@plugin::Core.solve('shape'=>'straight','mode'=>'endpoints','lower'=>{'point'=>[1000,2000,-3000]},'upper'=>{'point'=>[7900,2000,0]})

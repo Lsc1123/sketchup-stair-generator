@@ -67,7 +67,7 @@ module LSC
 
       def handle(action,payload)
         if action=='ready'
-          send_ui('ready',{'version'=>VERSION,'params'=>Core::DEFAULTS})
+          send_ui('ready',{'version'=>VERSION,'params'=>Core::DEFAULTS,'styles'=>Core.styles})
           if @read_on_ready
             @read_on_ready=false
             handle('read',nil)
@@ -95,7 +95,7 @@ module LSC
             Geometry.create(model,plan)
             send_ui('notice',{'text'=>'已在点选落点生成楼梯。'})
           else
-            send_ui('notice',{'text'=>'回到模型，点击下平台中心放置楼梯；Esc 取消。'})
+            send_ui('notice',{'text'=>'回到模型，点击下方接入边缘放置楼梯；Esc 取消。'})
             select_tool(PlacementTool.new(plan,model))
           end
           send_ui('applied',{'revision'=>payload['revision']})
@@ -152,7 +152,7 @@ module LSC
     unless file_loaded?(__FILE__)
       command=UI::Command.new('LSC 楼梯生成器') { show }
       command.tooltip='LSC 楼梯生成器'
-      command.status_bar_text='直跑、双跑、L、U 型参数楼梯，平台与扶手。'
+      command.status_bar_text='四种梯型、六种几何样式，平台与扶手。'
       command.small_icon=File.join(__dir__,'icons','stairs.png')
       command.large_icon=command.small_icon
       UI.menu('Extensions').add_item(command)

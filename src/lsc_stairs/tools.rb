@@ -17,6 +17,10 @@ module LSC
           rings.each { |ring| view.draw(GL_LINE_LOOP,ring) }
           view.draw(GL_LINES,rings[0].zip(rings[1]).flatten)
         end
+        @plan.fetch('meshes',[]).each do |mesh|
+          points=mesh['vertices'].map { |p| Geometry.point(p).transform(@transform) }
+          mesh['faces'].each { |face| view.draw(GL_LINE_LOOP,face.map { |i| points[i] }) }
+        end
         view.line_width=2
         view.draw(GL_LINES,@plan['rails'].flat_map { |r| [r['a'],r['b']].map { |p| Geometry.point(p).transform(@transform) } }) unless @plan['rails'].empty?
       end
@@ -26,6 +30,7 @@ module LSC
           [box['bottom'],box['top']].each { |z| box['corners'].each { |p| bounds.add(Geometry.point([*p,z]).transform(@transform)) } }
         end
         @plan['rails'].each { |r| [r['a'],r['b']].each { |p| bounds.add(Geometry.point(p).transform(@transform)) } }
+        @plan.fetch('meshes',[]).each { |mesh| mesh['vertices'].each { |p| bounds.add(Geometry.point(p).transform(@transform)) } }
         bounds
       end
       def onCancel(_reason,view)
@@ -43,7 +48,7 @@ module LSC
         @transform=Geom::Transformation.new
       end
       def activate
-        Sketchup.set_status_text('点选楼梯下平台中心放置；Esc 取消。')
+        Sketchup.set_status_text('点选楼梯下方接入边缘放置；Esc 取消。')
       end
       def onMouseMove(_flags,x,y,view)
         @input.pick(view,x,y); view.tooltip=@input.tooltip

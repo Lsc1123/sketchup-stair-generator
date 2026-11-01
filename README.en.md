@@ -1,10 +1,14 @@
 # LSC Stairs for SketchUp
 
-An offline parametric stair extension extracted from [LSC Spatial Workbench](https://github.com/Lsc1123/sketchup-spatial-workbench). MIT licensed. Version **0.1.0-beta.1**.
+An offline parametric stair extension extracted from [LSC Spatial Workbench](https://github.com/Lsc1123/sketchup-spatial-workbench). MIT licensed. Version **0.2.0-beta.1**.
 
 ![Stair inspector and preview](docs/interface.png)
 
 Supports straight, straight with an intermediate landing, L and U stairs, editable platforms, round handrails and posts. Create from dimensions or two picked endpoints. The Apple-inspired inspector offers live isometric, plan and side previews; one pure Ruby solver drives both preview and model geometry.
+
+Six geometry styles: standard steps, solid flights, sloped waist slabs, open treads, twin stringers and a central spine. Styles set plate and beam dimensions, with real editable geometry; they never assign materials. Primary stair dimensions and railing settings are retained. Plate thickness and beam dimensions remain customizable. Older components default to the standard style.
+
+Terminal floor plates and their perimeter railings are omitted. The stair meets the existing lower and upper floors directly; only intermediate landings are generated. Picked endpoints refer to the flight-to-floor connection edges.
 
 Download an RBZ from [Releases](https://github.com/Lsc1123/sketchup-stair-generator/releases), install with SketchUp Extension Manager, then open **Extensions → LSC 楼梯生成器**. The interface is currently in Chinese. Development target: SketchUp 2021+. Native macOS SU 2026 acceptance and Windows validation remain pending; see [validation](docs/validation.md).
 
@@ -16,6 +20,7 @@ Development checks:
 
 ```sh
 ruby tests/core_test.rb
+ruby tests/styles_test.rb
 ruby tests/controller_test.rb
 ruby tools/check_syntax.rb
 node --check src/lsc_stairs/ui/app.js

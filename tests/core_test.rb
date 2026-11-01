@@ -33,8 +33,8 @@ class StairCoreTest < Minitest::Test
     steps=p['boxes'].select { |b| b['detail']=='梯段 1' }
     assert_equal 20,p['stats']['count']
     assert_equal 19,steps.length
-    assert_equal 21,p['boxes'].length
-    assert_in_delta 6900,p['endpoint'][0],1e-7
+    assert_equal 19,p['boxes'].length
+    assert_in_delta 5700,p['endpoint'][0],1e-7
     assert_equal (1..19).map { |n| n*150.0 },steps.map { |s| s['top'] }
     assert_empty p['rails']
   end
@@ -69,7 +69,8 @@ class StairCoreTest < Minitest::Test
     p=C.solve('rise'=>30000,'riser'=>100,'post_spacing'=>200)
     assert_equal 300,p['stats']['count']
     assert p['rails'].length<2500
-    assert C.solve('shape'=>'straight','rise'=>150)['boxes'].length==2
+    assert_raises(ArgumentError) { C.solve('shape'=>'straight','rise'=>150) }
+    assert_equal 1,C.solve('shape'=>'straight','rise'=>200)['boxes'].length
   end
   def test_flight_posts_land_on_actual_steps
     p=C.solve('shape'=>'straight','rise'=>3150,'post_spacing'=>700)
@@ -83,8 +84,9 @@ class StairCoreTest < Minitest::Test
   end
   def test_landing_railings_leave_u_flight_openings_clear
     p=C.solve
-    # Both flights open onto the near side of the middle platform at x=3300.
-    on_edge=p['rails'].select { |r| r['detail']=='平台扶手' && (r['a'][0]-3300).abs<0.01 && (r['b'][0]-3300).abs<0.01 }
+    # Both flights open onto the near side of the middle platform at x=2700.
+    on_edge=p['rails'].select { |r| r['detail']=='平台扶手' && (r['a'][0]-2700).abs<0.01 && (r['b'][0]-2700).abs<0.01 }
+    refute_empty on_edge
     on_edge.each do |r|
       lo,hi=[r['a'][1],r['b'][1]].minmax
       assert hi<=-500+0.01 || lo>=1700-0.01 || (lo>=500-0.01 && hi<=700+0.01)
