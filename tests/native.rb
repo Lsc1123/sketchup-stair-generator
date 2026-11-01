@@ -54,6 +54,9 @@ module LSCStairsNativeTest
       @instance=@plugin::Geometry.create(@model,@plugin::Core.solve)
       @old_definition=@instance.definition
       @sibling=@model.entities.add_instance(@old_definition,Geom::Transformation.translation([300,0,0]))
+      # add_instance does not copy per-instance attributes; mirror native copy
+      # semantics explicitly so this fixture exercises a parametric sibling.
+      @plugin::Geometry.stamp(@sibling,@plugin::Core.solve)
       @old_stats=@sibling.get_attribute(@plugin::DICT,'stats')
       @instance.transformation=Geom::Transformation.translation([15,24,30])*Geom::Transformation.rotation(ORIGIN,Z_AXIS,0.57)*Geom::Transformation.scaling(1.3,0.8,1.1)
       @transform=@instance.transformation.to_a
